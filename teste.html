@@ -139,7 +139,7 @@
   mostrar('auto', 'Sistema', 'ok', android ? 'Android ' + android[1] : 'Android nao identificado');
   if (chrome) {
     var versao = parseInt(chrome[1], 10);
-    mostrar('auto', 'Navegador', versao >= 49 ? 'ok' : 'falha', 'Chrome ' + versao + (versao >= 49 ? '' : ' (antigo demais, minimo 49)'));
+    mostrar('auto', 'Navegador', versao >= 49 ? 'ok' : 'aviso', 'Chrome ' + versao + (versao >= 49 ? '' : ' (antigo, vai usar o modo compativel)'));
   } else {
     mostrar('auto', 'Navegador', 'aviso', 'Nao e o Chrome: ' + ua);
   }
@@ -149,11 +149,17 @@
   mostrar('auto', 'Conexao segura (HTTPS)', window.isSecureContext || location.protocol === 'https:' ? 'ok' : 'falha',
     location.protocol === 'https:' ? '' : 'O microfone so funciona em HTTPS. Endereco atual: ' + location.protocol);
 
-  mostrar('auto', 'Internet (fetch)', typeof window.fetch === 'function' ? 'ok' : 'falha', '');
-  mostrar('auto', 'Promise', typeof window.Promise === 'function' ? 'ok' : 'falha', '');
+  // O Cortex usa XMLHttpRequest (existe ate em navegador bem antigo), fetch e so bonus
+  mostrar('auto', 'Internet (XMLHttpRequest)', typeof window.XMLHttpRequest === 'function' || typeof window.XMLHttpRequest === 'object' ? 'ok' : 'falha', '');
+  mostrar('auto', 'Promise', typeof window.Promise === 'function' ? 'ok' : 'aviso', '');
 
-  var temGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-  mostrar('auto', 'Acesso ao microfone', temGetUserMedia ? 'ok' : 'falha', temGetUserMedia ? '' : 'navigator.mediaDevices ausente');
+  var temGetUserMediaNovo = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  var getUserMediaAntigo = navigator.webkitGetUserMedia || navigator.getUserMedia;
+  var temGetUserMedia = temGetUserMediaNovo || !!getUserMediaAntigo;
+  mostrar('auto', 'Acesso ao microfone', temGetUserMedia ? 'ok' : 'falha',
+    temGetUserMediaNovo ? 'modo moderno' : (getUserMediaAntigo ? 'modo compativel (webkitGetUserMedia)' : 'nenhum metodo disponivel'));
+
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
 
   var formatoAudio = '';
   if (typeof window.MediaRecorder === 'function') {
@@ -165,12 +171,14 @@
       }
     }
     mostrar('auto', 'Gravador de audio', formatoAudio ? 'ok' : 'falha', formatoAudio || 'nenhum formato suportado');
+  } else if (AudioCtx) {
+    // Sem MediaRecorder: capturamos o som cru pelo AudioContext e montamos um WAV na mao
+    mostrar('auto', 'Gravador de audio', 'ok', 'modo compativel (WAV via AudioContext)');
   } else {
-    mostrar('auto', 'Gravador de audio', 'falha', 'MediaRecorder ausente');
+    mostrar('auto', 'Gravador de audio', 'falha', 'sem MediaRecorder e sem AudioContext');
   }
 
-  var AudioCtx = window.AudioContext || window.webkitAudioContext;
-  mostrar('auto', 'AudioContext (animar olhos com a voz)', AudioCtx ? 'ok' : 'aviso', AudioCtx ? '' : 'opcional');
+  mostrar('auto', 'AudioContext', AudioCtx ? 'ok' : 'aviso', AudioCtx ? '' : 'opcional');
 
   var temFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
   mostrar('auto', 'Tela cheia', temFullscreen ? 'ok' : 'aviso', temFullscreen ? '' : 'opcional');
@@ -224,41 +232,158 @@
 
   // ---------- 4. Microfone ----------
 
+  var DURACAO_MS = 4000;
+  var TAXA_WAV = 16000; // 16 kHz basta para voz e deixa o arquivo pequeno
+  var URLs = window.URL || window.webkitURL;
+
+  function pedirMicrofone(sucesso, erro) {
+    if (temGetUserMediaNovo) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(sucesso, erro);
+    } else {
+      getUserMediaAntigo.call(navigator, { audio: true }, sucesso, erro);
+    }
+  }
+
+  function pararMicrofone(stream) {
+    var faixas = stream.getTracks ? stream.getTracks() : (stream.getAudioTracks ? stream.getAudioTracks() : []);
+    for (var i = 0; i < faixas.length; i++) {
+      if (faixas[i].stop) { faixas[i].stop(); }
+    }
+    if (stream.stop) { stream.stop(); } // jeito antigo, Chrome < 45
+  }
+
+  // Modo moderno: MediaRecorder faz tudo
+  function gravarComMediaRecorder(stream, pronto) {
+    var pedacos = [];
+    var gravador = new MediaRecorder(stream, { mimeType: formatoAudio });
+    gravador.ondataavailable = function (e) {
+      if (e.data && e.data.size > 0) { pedacos.push(e.data); }
+    };
+    gravador.onstop = function () {
+      pronto(new Blob(pedacos, { type: formatoAudio }), formatoAudio, null);
+    };
+    gravador.start();
+    setTimeout(function () { gravador.stop(); }, DURACAO_MS);
+  }
+
+  // Modo compativel: pega as amostras cruas do microfone e monta um WAV
+  function gravarComAudioContext(stream, pronto) {
+    var ctx = new AudioCtx();
+    var fonte = ctx.createMediaStreamSource(stream);
+    var criar = ctx.createScriptProcessor || ctx.createJavaScriptNode;
+    var processador = criar.call(ctx, 4096, 1, 1);
+    var blocos = [];
+    var pico = 0;
+    // Guardado no window porque Chrome antigo as vezes "esquece" o processador no meio da gravacao
+    window.cortexProcessador = processador;
+    processador.onaudioprocess = function (e) {
+      var dados = e.inputBuffer.getChannelData(0);
+      var copia = new Float32Array(dados.length);
+      for (var i = 0; i < dados.length; i++) {
+        copia[i] = dados[i];
+        var abs = dados[i] < 0 ? -dados[i] : dados[i];
+        if (abs > pico) { pico = abs; }
+      }
+      blocos.push(copia);
+    };
+    fonte.connect(processador);
+    processador.connect(ctx.destination);
+    setTimeout(function () {
+      processador.disconnect();
+      fonte.disconnect();
+      var taxaOriginal = ctx.sampleRate;
+      if (ctx.close) { ctx.close(); }
+      pronto(montarWav(blocos, taxaOriginal), 'audio/wav (' + taxaOriginal + ' Hz -> ' + TAXA_WAV + ' Hz)', pico);
+    }, DURACAO_MS);
+  }
+
+  function montarWav(blocos, taxaOriginal) {
+    var total = 0;
+    var i, j;
+    for (i = 0; i < blocos.length; i++) { total += blocos[i].length; }
+    var tudo = new Float32Array(total);
+    var pos = 0;
+    for (i = 0; i < blocos.length; i++) { tudo.set(blocos[i], pos); pos += blocos[i].length; }
+
+    // Reduz a taxa (ex.: 44100 -> 16000) tirando a media de cada trecho
+    var razao = taxaOriginal / TAXA_WAV;
+    var tamanho = Math.floor(total / razao);
+    var amostras = new Int16Array(tamanho);
+    for (i = 0; i < tamanho; i++) {
+      var inicio = Math.floor(i * razao);
+      var fim = Math.min(Math.floor((i + 1) * razao), total);
+      var soma = 0;
+      for (j = inicio; j < fim; j++) { soma += tudo[j]; }
+      var v = fim > inicio ? soma / (fim - inicio) : 0;
+      v = Math.max(-1, Math.min(1, v));
+      amostras[i] = v < 0 ? v * 0x8000 : v * 0x7FFF;
+    }
+
+    // Cabecalho WAV padrao (PCM 16 bits, mono)
+    var buffer = new ArrayBuffer(44 + amostras.length * 2);
+    var d = new DataView(buffer);
+    function texto(off, s) { for (var k = 0; k < s.length; k++) { d.setUint8(off + k, s.charCodeAt(k)); } }
+    texto(0, 'RIFF');
+    d.setUint32(4, 36 + amostras.length * 2, true);
+    texto(8, 'WAVE');
+    texto(12, 'fmt ');
+    d.setUint32(16, 16, true);
+    d.setUint16(20, 1, true);
+    d.setUint16(22, 1, true);
+    d.setUint32(24, TAXA_WAV, true);
+    d.setUint32(28, TAXA_WAV * 2, true);
+    d.setUint16(32, 2, true);
+    d.setUint16(34, 16, true);
+    texto(36, 'data');
+    d.setUint32(40, amostras.length * 2, true);
+    for (i = 0; i < amostras.length; i++) { d.setInt16(44 + i * 2, amostras[i], true); }
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
   var btnGravar = document.getElementById('btnGravar');
-  if (!temGetUserMedia || !formatoAudio) {
+  if (!temGetUserMedia || (!formatoAudio && !AudioCtx)) {
     btnGravar.disabled = true;
   }
   btnGravar.onclick = function () {
     btnGravar.disabled = true;
     btnGravar.innerHTML = 'Pedindo permissao...';
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var pedacos = [];
-      var gravador = new MediaRecorder(stream, { mimeType: formatoAudio });
-      gravador.ondataavailable = function (e) {
-        if (e.data && e.data.size > 0) { pedacos.push(e.data); }
-      };
-      gravador.onstop = function () {
-        stream.getTracks().forEach(function (t) { t.stop(); });
-        var blob = new Blob(pedacos, { type: formatoAudio });
-        var kb = Math.round(blob.size / 1024);
-        if (blob.size === 0) {
-          mostrar('resGravar', 'Gravacao', 'falha', 'arquivo vazio');
-        } else {
-          mostrar('resGravar', 'Gravacao', 'ok', kb + ' KB em ' + formatoAudio);
-          var player = new Audio(URL.createObjectURL(blob));
-          player.onended = function () {
-            mostrar('resGravar', 'Reproducao', 'ok', 'veja se voce ouviu sua voz');
-          };
-          player.play();
-        }
-        btnGravar.innerHTML = 'Gravar de novo';
-        btnGravar.disabled = false;
-      };
-      gravador.start();
+    pedirMicrofone(function (stream) {
       btnGravar.innerHTML = 'Gravando... fale agora';
-      setTimeout(function () { gravador.stop(); }, 4000);
+      var gravar = formatoAudio ? gravarComMediaRecorder : gravarComAudioContext;
+      mostrar('resGravar', 'Metodo de gravacao', 'ok', formatoAudio ? 'MediaRecorder' : 'compativel (AudioContext + WAV)');
+      try {
+        gravar(stream, function (blob, formato, pico) {
+          pararMicrofone(stream);
+          var kb = Math.round(blob.size / 1024);
+          if (blob.size <= 44) {
+            mostrar('resGravar', 'Gravacao', 'falha', 'arquivo vazio');
+          } else {
+            mostrar('resGravar', 'Gravacao', 'ok', kb + ' KB em ' + formato);
+            if (pico !== null) {
+              var pct = Math.round(pico * 100);
+              mostrar('resGravar', 'Volume captado', pct >= 5 ? 'ok' : 'falha',
+                'pico ' + pct + '%' + (pct >= 5 ? '' : ' (quase silencio: o microfone nao pegou som)'));
+            }
+            var player = new Audio(URLs.createObjectURL(blob));
+            player.onended = function () {
+              mostrar('resGravar', 'Reproducao', 'ok', 'veja se voce ouviu sua voz');
+            };
+            player.onerror = function () {
+              mostrar('resGravar', 'Reproducao', 'falha', 'o navegador nao conseguiu tocar o audio');
+            };
+            player.play();
+          }
+          btnGravar.innerHTML = 'Gravar de novo';
+          btnGravar.disabled = false;
+        });
+      } catch (e) {
+        pararMicrofone(stream);
+        mostrar('resGravar', 'Gravacao', 'falha', 'erro: ' + e.message);
+        btnGravar.innerHTML = 'Tentar de novo';
+        btnGravar.disabled = false;
+      }
     }, function (erro) {
-      mostrar('resGravar', 'Permissao do microfone', 'falha', erro.name + ': ' + erro.message);
+      mostrar('resGravar', 'Permissao do microfone', 'falha', (erro.name || erro) + ': ' + (erro.message || ''));
       btnGravar.innerHTML = 'Tentar de novo';
       btnGravar.disabled = false;
     });
