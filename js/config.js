@@ -3,4 +3,4 @@
 var Cortex = window.Cortex || {};
 window.Cortex = Cortex;
 
-Cortex.SERVIDOR = '';
+Cortex.SERVIDOR = 'https://cortex.jp-cortex.workers.dev';
