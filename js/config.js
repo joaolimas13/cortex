@@ -1,6 +1,7 @@
-// Endereco do servidor do Cortex na Cloudflare (sem barra no final).
-// Preenchido depois do primeiro deploy do Worker.
+// Endereco do servidor do Cortex (sem barra no final).
+// Relativo: a pagina e o servidor ficam no mesmo endereco
+// (Cloudflare: http://cortex.jp-cortex.workers.dev, ou a copia na Vercel).
 var Cortex = window.Cortex || {};
 window.Cortex = Cortex;
 
-Cortex.SERVIDOR = 'https://cortex-two-henna.vercel.app/api';
+Cortex.SERVIDOR = '/api';

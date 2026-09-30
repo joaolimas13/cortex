@@ -1,0 +1,10 @@
+# Arquivos que a Cloudflare NAO deve publicar como pagina (so o rosto do Cortex vai)
+.git
+.gitignore
+.assetsignore
+.wrangler
+.vercel
+node_modules
+servidor
+api
+package.json

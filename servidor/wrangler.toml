@@ -1,13 +1,20 @@
-# Servidor do Cortex na Cloudflare Workers (plano gratis).
+# Cortex na Cloudflare Workers (plano gratis): pagina do rosto + servidor no mesmo endereco.
+# O tablet (Android 4.2) nao confia em nenhum certificado moderno, entao ele usa
+# HTTP sem criptografia: http://cortex.jp-cortex.workers.dev
+#
 # Segredos (NUNCA escreva aqui, este arquivo e publico no GitHub):
 #   GEMINI_API_KEY  -> chave do Google AI Studio
 #   CORTEX_CODIGO   -> codigo de acesso digitado uma vez no tablet
-# Publicado no Cloudflare Pages (pages.dev tem certificado RSA, aceito pelo Android 4.2):
-#   npx wrangler pages deploy pages --project-name cortex --branch main
-# Segredos: npx wrangler pages secret put NOME --project-name cortex
+# Configure com: npx wrangler secret put NOME
+# Publicar:      npx wrangler deploy   (dentro da pasta servidor)
 name = "cortex"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+
+# A pagina (index.html, css, js) vem da pasta principal do repositorio.
+# Rotas /api/* nao existem como arquivo, entao caem no codigo do servidor.
+[assets]
+directory = ".."
 
 [vars]
 MODELO = "gemini-flash-latest"
