@@ -96,10 +96,16 @@
   <button id="btnGravar">Gravar 4 segundos</button>
   <div id="resGravar"></div>
 
-  <h2>5. Resultado</h2>
+  <h2>5. Servidor do Cortex</h2>
+  <p class="sub">Verifica se o tablet consegue falar com o servidor na Cloudflare.</p>
+  <button id="btnServidor">Testar conexão</button>
+  <div id="resServidor"></div>
+
+  <h2>6. Resultado</h2>
   <p class="sub">Depois dos testes 3 e 4, tire um print desta tela ou copie o texto abaixo e me mande.</p>
   <textarea id="relatorio" readonly></textarea>
 
+<script src="js/config.js?v=2"></script>
 <script>
 (function () {
   var resultados = {};
@@ -228,6 +234,40 @@
       mostrar('resFala', 'Vozes em portugues', 'aviso',
         'nenhuma listada (' + achado.total + ' vozes no total). Pode falar mesmo assim com sotaque errado.');
     }
+  };
+
+  // ---------- 5. Servidor ----------
+
+  document.getElementById('btnServidor').onclick = function () {
+    var servidor = window.Cortex && Cortex.SERVIDOR;
+    if (!servidor) {
+      mostrar('resServidor', 'Servidor', 'falha', 'endereco ainda nao configurado (js/config.js)');
+      return;
+    }
+    var inicio = Date.now();
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', servidor + '/ping', true);
+    xhr.timeout = 15000;
+    xhr.onload = function () {
+      var ms = Date.now() - inicio;
+      var dados = null;
+      try { dados = JSON.parse(xhr.responseText); } catch (e) {}
+      if (xhr.status === 200 && dados && dados.ok) {
+        mostrar('resServidor', 'Servidor', 'ok', 'respondeu em ' + ms + ' ms');
+        mostrar('resServidor', 'Chave e codigo configurados', dados.configurado ? 'ok' : 'aviso',
+          dados.configurado ? '' : 'falta configurar os segredos na Cloudflare');
+      } else {
+        mostrar('resServidor', 'Servidor', 'falha', 'status ' + xhr.status + ': ' + xhr.responseText.substring(0, 100));
+      }
+    };
+    xhr.onerror = function () {
+      // Status 0 aqui geralmente = conexao segura recusada (certificado/TLS) ou sem internet
+      mostrar('resServidor', 'Servidor', 'falha', 'nao conectou (sem internet ou conexao segura recusada pelo tablet)');
+    };
+    xhr.ontimeout = function () {
+      mostrar('resServidor', 'Servidor', 'falha', 'demorou mais de 15 s');
+    };
+    xhr.send();
   };
 
   // ---------- 4. Microfone ----------

@@ -38,17 +38,19 @@
 
   function pensar(wav, segundos) {
     mudar('pensando', 'pensando...');
-    Cortex.Cerebro.perguntar(wav, segundos, function (erro, resposta) {
+    Cortex.Cerebro.perguntar(wav, segundos, function (erro, resposta, transcricao) {
       if (erro) {
-        falar('Tive um problema para pensar. ' + erro);
+        falar('Tive um problema. ' + erro);
       } else {
-        falar(resposta);
+        falar(resposta, transcricao ? 'você: ' + transcricao : '');
       }
     });
   }
 
-  function falar(texto) {
+  function falar(texto, legenda) {
     mudar('falando', '');
+    // Mostra o que ele entendeu que voce disse (textContent: evita HTML vindo do servidor)
+    if (legenda) { statusEl.textContent = legenda; }
     Cortex.Voz.falar(texto, function () {
       ultimoUso = Date.now();
       mudar('ocioso', 'toque para falar');

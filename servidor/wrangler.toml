@@ -1,0 +1,11 @@
+# Servidor do Cortex na Cloudflare Workers (plano gratis).
+# Segredos (NUNCA escreva aqui, este arquivo e publico no GitHub):
+#   GEMINI_API_KEY  -> chave do Google AI Studio
+#   CORTEX_CODIGO   -> codigo de acesso digitado uma vez no tablet
+# Configure com: npx wrangler secret put NOME
+name = "cortex"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+MODELO = "gemini-flash-latest"
