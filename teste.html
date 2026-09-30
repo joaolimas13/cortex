@@ -105,7 +105,7 @@
   <p class="sub">Depois dos testes 3 e 4, tire um print desta tela ou copie o texto abaixo e me mande.</p>
   <textarea id="relatorio" readonly></textarea>
 
-<script src="js/config.js?v=5"></script>
+<script src="js/config.js?v=6"></script>
 <script>
 (function () {
   var resultados = {};
@@ -238,12 +238,39 @@
 
   // ---------- 5. Servidor ----------
 
+  // Carrega uma imagem de outro site: <img> nao depende de CORS,
+  // entao se falhar e a conexao segura (certificado) que foi recusada.
+  function testarImagem(nome, url) {
+    var img = new Image();
+    var inicio = Date.now();
+    var fim = false;
+    img.onload = function () {
+      fim = true;
+      mostrar('resServidor', nome, 'ok', 'carregou em ' + (Date.now() - inicio) + ' ms');
+    };
+    img.onerror = function () {
+      fim = true;
+      mostrar('resServidor', nome, 'falha', 'recusado');
+    };
+    setTimeout(function () {
+      if (!fim) { mostrar('resServidor', nome, 'falha', 'sem resposta em 15 s'); }
+    }, 15000);
+    img.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+  }
+
   document.getElementById('btnServidor').onclick = function () {
     var servidor = window.Cortex && Cortex.SERVIDOR;
     if (!servidor) {
       mostrar('resServidor', 'Servidor', 'falha', 'endereco ainda nao configurado (js/config.js)');
       return;
     }
+    var agora = new Date();
+    mostrar('resServidor', 'Endereco testado', 'ok', servidor);
+    mostrar('resServidor', 'Data e hora do tablet', agora.getFullYear() >= 2026 ? 'ok' : 'falha',
+      agora.toLocaleString() + (agora.getFullYear() >= 2026 ? '' : ' (DATA ERRADA: corrija nas configuracoes)'));
+    testarImagem('Imagem do servidor Cortex', servidor + '/pixel');
+    testarImagem('Imagem do Google', 'https://www.google.com/favicon.ico');
+    testarImagem('Imagem da Wikipedia', 'https://www.wikipedia.org/static/favicon/wikipedia.ico');
     var inicio = Date.now();
     var xhr = new XMLHttpRequest();
     xhr.open('GET', servidor + '/ping', true);
@@ -255,7 +282,7 @@
       if (xhr.status === 200 && dados && dados.ok) {
         mostrar('resServidor', 'Servidor', 'ok', 'respondeu em ' + ms + ' ms');
         mostrar('resServidor', 'Chave e codigo configurados', dados.configurado ? 'ok' : 'aviso',
-          dados.configurado ? '' : 'falta configurar os segredos na Cloudflare');
+          dados.configurado ? '' : 'falta configurar a chave e o codigo no servidor');
       } else {
         mostrar('resServidor', 'Servidor', 'falha', 'status ' + xhr.status + ': ' + xhr.responseText.substring(0, 100));
       }

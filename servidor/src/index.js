@@ -136,6 +136,11 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
+    if (pathname.endsWith('/pixel')) {
+      // Imagem 1x1 para diagnostico: <img> nao depende de CORS, so da conexao segura
+      const gif = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), (c) => c.charCodeAt(0));
+      return new Response(gif, { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' } });
+    }
     if (pathname.endsWith('/ping')) {
       return json({ ok: true, nome: 'Cortex', configurado: !!(env.GEMINI_API_KEY && env.CORTEX_CODIGO) });
     }
