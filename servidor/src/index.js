@@ -44,7 +44,8 @@ function instrucoes() {
 }
 
 async function chamarGemini(env, conteudos, semThinking) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.MODELO}:generateContent`;
+  const modelo = env.MODELO || 'gemini-flash-latest';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`;
   const config = {
     responseMimeType: 'application/json',
     responseSchema: {

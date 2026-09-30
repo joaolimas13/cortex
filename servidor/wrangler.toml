@@ -2,7 +2,9 @@
 # Segredos (NUNCA escreva aqui, este arquivo e publico no GitHub):
 #   GEMINI_API_KEY  -> chave do Google AI Studio
 #   CORTEX_CODIGO   -> codigo de acesso digitado uma vez no tablet
-# Configure com: npx wrangler secret put NOME
+# Publicado no Cloudflare Pages (pages.dev tem certificado RSA, aceito pelo Android 4.2):
+#   npx wrangler pages deploy pages --project-name cortex --branch main
+# Segredos: npx wrangler pages secret put NOME --project-name cortex
 name = "cortex"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
