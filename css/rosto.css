@@ -1,0 +1,125 @@
+/*
+  Rosto do Cortex.
+  O Chrome 34 do tablet so entende transform/animation com prefixo -webkit-,
+  por isso cada um aparece duas vezes.
+*/
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  font-family: sans-serif;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  cursor: pointer;
+}
+
+#rosto {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* Grupo dos dois olhos: e ele que se move quando o Cortex "olha" para os lados */
+#olhos {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 88vmin;
+  height: 44vmin;
+  margin: -26vmin 0 0 -44vmin;
+  -webkit-transition: -webkit-transform 0.25s ease-out;
+  transition: transform 0.25s ease-out;
+}
+
+.olho {
+  position: absolute;
+  top: 0;
+  width: 32vmin;
+  height: 44vmin;
+  -webkit-transition: -webkit-transform 0.07s linear;
+  transition: transform 0.07s linear;
+}
+.olho.esq { left: 0; }
+.olho.dir { right: 0; }
+
+.olho.piscando {
+  -webkit-transform: scaleY(0.06);
+  transform: scaleY(0.06);
+}
+
+/* A parte que brilha. Mudar top/bottom faz o olho "fechar" parcialmente */
+.brilho {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  border-radius: 7vmin;
+  background: #35e0ff;
+  -webkit-transition: top 0.25s, bottom 0.25s, background-color 0.3s;
+  transition: top 0.25s, bottom 0.25s, background-color 0.3s;
+}
+
+/* Elipse preta que sobe por baixo: deixa o olho em formato de "sorriso" ^ ^ */
+.brilho:after {
+  content: '';
+  position: absolute;
+  left: -15%;
+  top: 110%;
+  width: 130%;
+  height: 100%;
+  border-radius: 50%;
+  background: #000;
+  -webkit-transition: top 0.25s;
+  transition: top 0.25s;
+}
+.feliz .brilho:after { top: 55%; }
+
+/* ---------- Estados ---------- */
+
+.estado-ouvindo .brilho {
+  background: #5dffa8;
+}
+
+.estado-pensando .brilho {
+  top: 28%;
+}
+
+.estado-falando .brilho {
+  -webkit-animation: falar 0.3s ease-in-out infinite alternate;
+  animation: falar 0.3s ease-in-out infinite alternate;
+}
+@-webkit-keyframes falar {
+  from { top: 0; bottom: 0; }
+  to { top: 7%; bottom: 7%; }
+}
+@keyframes falar {
+  from { top: 0; bottom: 0; }
+  to { top: 7%; bottom: 7%; }
+}
+
+.estado-dormindo .brilho {
+  top: 47%;
+  bottom: 47%;
+  background: #1b6f80;
+}
+
+/* ---------- Texto de ajuda embaixo ---------- */
+
+#status {
+  position: absolute;
+  right: 0;
+  bottom: 5vmin;
+  left: 0;
+  text-align: center;
+  font-size: 4vmin;
+  color: #2a6b78;
+}

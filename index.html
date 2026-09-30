@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Permite "Adicionar a tela inicial" abrir sem a barra do Chrome (Chrome antigo nao le manifest) -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>Cortex</title>
+<link rel="stylesheet" href="css/rosto.css?v=1">
+</head>
+<body>
+  <div id="rosto" class="estado-ocioso">
+    <div id="olhos">
+      <div class="olho esq"><div class="brilho"></div></div>
+      <div class="olho dir"><div class="brilho"></div></div>
+    </div>
+    <div id="status">toque para falar</div>
+  </div>
+
+  <!-- Scripts comuns (sem modules) e em ES5 para rodar no Chrome 34 do tablet -->
+  <script src="js/olhos.js?v=1"></script>
+  <script src="js/microfone.js?v=1"></script>
+  <script src="js/voz.js?v=1"></script>
+  <script src="js/cerebro.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>
