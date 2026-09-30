@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex - Teste do tablet</title>
+<!--
+  Etapa 0 do Cortex: verifica se o navegador do tablet consegue fazer
+  o que o assistente precisa (gravar audio, falar em portugues, animar).
+  Escrito em JavaScript antigo (ES5: var, function, sem =>) de proposito,
+  para rodar mesmo no Chrome do Android 4.2.
+-->
+<style>
+  body {
+    margin: 0;
+    padding: 16px;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: sans-serif;
+    font-size: 16px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 16px; color: #8b949e; }
+  .item {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: #161b22;
+    border-left: 6px solid #6e7681;
+  }
+  .item.ok { border-left-color: #3fb950; }
+  .item.falha { border-left-color: #f85149; }
+  .item.aviso { border-left-color: #d29922; }
+  .item b { display: block; margin-bottom: 2px; }
+  .item span { color: #8b949e; font-size: 14px; word-wrap: break-word; }
+  button {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin: 12px 0 4px;
+    font-size: 18px;
+    border: 0;
+    border-radius: 8px;
+    background: #1f6feb;
+    color: #fff;
+  }
+  button:disabled { background: #30363d; color: #8b949e; }
+  h2 { font-size: 18px; margin: 24px 0 8px; }
+  .olho {
+    width: 60px;
+    height: 60px;
+    margin: 8px auto;
+    border-radius: 50%;
+    background: #58a6ff;
+    -webkit-animation: piscar 2s infinite;
+    animation: piscar 2s infinite;
+  }
+  @-webkit-keyframes piscar {
+    0%, 90%, 100% { -webkit-transform: scaleY(1); }
+    95% { -webkit-transform: scaleY(0.1); }
+  }
+  @keyframes piscar {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+  }
+  textarea {
+    width: 100%;
+    height: 180px;
+    box-sizing: border-box;
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <h1>Cortex &mdash; teste do tablet</h1>
+  <p class="sub">Verifica se este navegador aguenta o assistente.</p>
+
+  <h2>1. Testes automáticos</h2>
+  <div id="auto"></div>
+
+  <h2>2. Animação</h2>
+  <p class="sub">A bolinha azul deve piscar a cada 2 segundos.</p>
+  <div class="olho"></div>
+
+  <h2>3. Voz do Cortex</h2>
+  <p class="sub">Aperte e veja se o tablet fala em português.</p>
+  <button id="btnFalar">Testar voz</button>
+  <div id="resFala"></div>
+
+  <h2>4. Microfone</h2>
+  <p class="sub">Aperte, fale algo por 4 segundos e escute a gravação.</p>
+  <button id="btnGravar">Gravar 4 segundos</button>
+  <div id="resGravar"></div>
+
+  <h2>5. Resultado</h2>
+  <p class="sub">Depois dos testes 3 e 4, tire um print desta tela ou copie o texto abaixo e me mande.</p>
+  <textarea id="relatorio" readonly></textarea>
+
+<script>
+(function () {
+  var resultados = {};
+
+  function mostrar(alvoId, nome, estado, detalhe) {
+    resultados[nome] = estado.toUpperCase() + (detalhe ? ' - ' + detalhe : '');
+    var div = document.createElement('div');
+    div.className = 'item ' + estado;
+    var titulo = document.createElement('b');
+    var simbolo = estado === 'ok' ? '✔ ' : (estado === 'falha' ? '✘ ' : '⚠ ');
+    titulo.appendChild(document.createTextNode(simbolo + nome));
+    div.appendChild(titulo);
+    if (detalhe) {
+      var info = document.createElement('span');
+      info.appendChild(document.createTextNode(detalhe));
+      div.appendChild(info);
+    }
+    document.getElementById(alvoId).appendChild(div);
+    atualizarRelatorio();
+  }
+
+  function atualizarRelatorio() {
+    var linhas = ['CORTEX - TESTE DO TABLET'];
+    for (var nome in resultados) {
+      if (resultados.hasOwnProperty(nome)) {
+        linhas.push(nome + ': ' + resultados[nome]);
+      }
+    }
+    document.getElementById('relatorio').value = linhas.join('\n');
+  }
+
+  // ---------- 1. Testes automaticos ----------
+
+  var ua = navigator.userAgent;
+  var chrome = ua.match(/Chrome\/(\d+)/);
+  var android = ua.match(/Android ([\d.]+)/);
+  mostrar('auto', 'Sistema', 'ok', android ? 'Android ' + android[1] : 'Android nao identificado');
+  if (chrome) {
+    var versao = parseInt(chrome[1], 10);
+    mostrar('auto', 'Navegador', versao >= 49 ? 'ok' : 'falha', 'Chrome ' + versao + (versao >= 49 ? '' : ' (antigo demais, minimo 49)'));
+  } else {
+    mostrar('auto', 'Navegador', 'aviso', 'Nao e o Chrome: ' + ua);
+  }
+
+  mostrar('auto', 'Tela', 'ok', screen.width + ' x ' + screen.height + ' (densidade ' + (window.devicePixelRatio || 1) + ')');
+
+  mostrar('auto', 'Conexao segura (HTTPS)', window.isSecureContext || location.protocol === 'https:' ? 'ok' : 'falha',
+    location.protocol === 'https:' ? '' : 'O microfone so funciona em HTTPS. Endereco atual: ' + location.protocol);
+
+  mostrar('auto', 'Internet (fetch)', typeof window.fetch === 'function' ? 'ok' : 'falha', '');
+  mostrar('auto', 'Promise', typeof window.Promise === 'function' ? 'ok' : 'falha', '');
+
+  var temGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  mostrar('auto', 'Acesso ao microfone', temGetUserMedia ? 'ok' : 'falha', temGetUserMedia ? '' : 'navigator.mediaDevices ausente');
+
+  var formatoAudio = '';
+  if (typeof window.MediaRecorder === 'function') {
+    var formatos = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    for (var i = 0; i < formatos.length; i++) {
+      if (!MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(formatos[i])) {
+        formatoAudio = formatos[i];
+        break;
+      }
+    }
+    mostrar('auto', 'Gravador de audio', formatoAudio ? 'ok' : 'falha', formatoAudio || 'nenhum formato suportado');
+  } else {
+    mostrar('auto', 'Gravador de audio', 'falha', 'MediaRecorder ausente');
+  }
+
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
+  mostrar('auto', 'AudioContext (animar olhos com a voz)', AudioCtx ? 'ok' : 'aviso', AudioCtx ? '' : 'opcional');
+
+  var temFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  mostrar('auto', 'Tela cheia', temFullscreen ? 'ok' : 'aviso', temFullscreen ? '' : 'opcional');
+
+  mostrar('auto', 'Manter tela ligada (Wake Lock)', 'wakeLock' in navigator ? 'ok' : 'aviso',
+    'wakeLock' in navigator ? '' : 'opcional, da para contornar');
+
+  var temFala = 'speechSynthesis' in window;
+  mostrar('auto', 'Sintese de voz', temFala ? 'ok' : 'falha', temFala ? '' : 'speechSynthesis ausente');
+
+  // ---------- 3. Voz ----------
+
+  function acharVozPortugues() {
+    var vozes = window.speechSynthesis.getVoices();
+    var nomes = [];
+    var escolhida = null;
+    for (var i = 0; i < vozes.length; i++) {
+      var lang = (vozes[i].lang || '').replace('_', '-').toLowerCase();
+      if (lang.indexOf('pt') === 0) {
+        nomes.push(vozes[i].name + ' (' + vozes[i].lang + ')');
+        if (!escolhida || lang === 'pt-br') { escolhida = vozes[i]; }
+      }
+    }
+    return { voz: escolhida, nomes: nomes, total: vozes.length };
+  }
+
+  var btnFalar = document.getElementById('btnFalar');
+  if (!temFala) {
+    btnFalar.disabled = true;
+  }
+  btnFalar.onclick = function () {
+    var achado = acharVozPortugues();
+    var frase = new SpeechSynthesisUtterance('Ola, eu sou o Cortex. Se voce me ouviu, o teste de voz funcionou.');
+    frase.lang = 'pt-BR';
+    if (achado.voz) { frase.voice = achado.voz; }
+    frase.onend = function () {
+      mostrar('resFala', 'Voz falou ate o fim', 'ok', '');
+    };
+    frase.onerror = function (e) {
+      mostrar('resFala', 'Voz falou ate o fim', 'falha', 'erro: ' + (e.error || 'desconhecido'));
+    };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(frase);
+    if (achado.nomes.length) {
+      mostrar('resFala', 'Vozes em portugues', 'ok', achado.nomes.join(', '));
+    } else {
+      mostrar('resFala', 'Vozes em portugues', 'aviso',
+        'nenhuma listada (' + achado.total + ' vozes no total). Pode falar mesmo assim com sotaque errado.');
+    }
+  };
+
+  // ---------- 4. Microfone ----------
+
+  var btnGravar = document.getElementById('btnGravar');
+  if (!temGetUserMedia || !formatoAudio) {
+    btnGravar.disabled = true;
+  }
+  btnGravar.onclick = function () {
+    btnGravar.disabled = true;
+    btnGravar.innerHTML = 'Pedindo permissao...';
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var pedacos = [];
+      var gravador = new MediaRecorder(stream, { mimeType: formatoAudio });
+      gravador.ondataavailable = function (e) {
+        if (e.data && e.data.size > 0) { pedacos.push(e.data); }
+      };
+      gravador.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        var blob = new Blob(pedacos, { type: formatoAudio });
+        var kb = Math.round(blob.size / 1024);
+        if (blob.size === 0) {
+          mostrar('resGravar', 'Gravacao', 'falha', 'arquivo vazio');
+        } else {
+          mostrar('resGravar', 'Gravacao', 'ok', kb + ' KB em ' + formatoAudio);
+          var player = new Audio(URL.createObjectURL(blob));
+          player.onended = function () {
+            mostrar('resGravar', 'Reproducao', 'ok', 'veja se voce ouviu sua voz');
+          };
+          player.play();
+        }
+        btnGravar.innerHTML = 'Gravar de novo';
+        btnGravar.disabled = false;
+      };
+      gravador.start();
+      btnGravar.innerHTML = 'Gravando... fale agora';
+      setTimeout(function () { gravador.stop(); }, 4000);
+    }, function (erro) {
+      mostrar('resGravar', 'Permissao do microfone', 'falha', erro.name + ': ' + erro.message);
+      btnGravar.innerHTML = 'Tentar de novo';
+      btnGravar.disabled = false;
+    });
+  };
+})();
+</script>
+</body>
+</html>
