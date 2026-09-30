@@ -130,15 +130,16 @@ async function perguntar(request, env) {
 
 export default {
   async fetch(request, env) {
+    // endsWith: na Vercel as rotas ficam em /api/ping e /api/perguntar
     const { pathname } = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
-    if (pathname === '/ping') {
+    if (pathname.endsWith('/ping')) {
       return json({ ok: true, nome: 'Cortex', configurado: !!(env.GEMINI_API_KEY && env.CORTEX_CODIGO) });
     }
-    if (pathname === '/perguntar' && request.method === 'POST') {
+    if (pathname.endsWith('/perguntar') && request.method === 'POST') {
       try {
         return await perguntar(request, env);
       } catch (e) {

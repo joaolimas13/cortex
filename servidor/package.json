@@ -1,0 +1,5 @@
+{
+  "name": "cortex-servidor",
+  "private": true,
+  "type": "module"
+}
