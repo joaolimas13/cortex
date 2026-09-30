@@ -64,6 +64,7 @@
 
   document.addEventListener('click', function () {
     telaCheia();
+    Cortex.Voz.destravar();
     ultimoUso = Date.now();
     if (estado === 'dormindo') {
       acordar();

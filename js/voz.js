@@ -86,6 +86,17 @@ Cortex.Voz = (function () {
     if (sintese) { sintese.cancel(); }
   }
 
+  // Safari so deixa falar depois que a primeira fala acontece dentro de um toque.
+  // Uma fala vazia no primeiro toque "destrava" a voz para as respostas depois.
+  var destravada = false;
+  function destravar() {
+    if (destravada || !sintese) { return; }
+    destravada = true;
+    var u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    sintese.speak(u);
+  }
+
   if (sintese) {
     escolherVoz();
     sintese.onvoiceschanged = escolherVoz;
@@ -93,6 +104,7 @@ Cortex.Voz = (function () {
 
   return {
     falar: falar,
-    parar: parar
+    parar: parar,
+    destravar: destravar
   };
 })();

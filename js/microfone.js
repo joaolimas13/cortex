@@ -46,9 +46,11 @@ Cortex.Microfone = (function () {
       pronto();
       return;
     }
+    // Cria o AudioContext ainda dentro do toque (o Safari exige), antes de pedir o microfone
+    if (!ctx) { ctx = new AudioCtx(); }
+    if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
     pedirPermissao(function (s) {
       stream = s;
-      ctx = new AudioCtx();
       fonte = ctx.createMediaStreamSource(stream);
       var criar = ctx.createScriptProcessor || ctx.createJavaScriptNode;
       processador = criar.call(ctx, 4096, 1, 1);
@@ -165,6 +167,8 @@ Cortex.Microfone = (function () {
       return;
     }
     preparar(function () {
+      // Safari (iPad/iPhone) cria o AudioContext "pausado": precisa retomar dentro do toque
+      if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
       blocos = [];
       falou = false;
       inicio = Date.now();
