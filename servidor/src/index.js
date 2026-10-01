@@ -48,29 +48,50 @@ const MODELO_RESERVA = 'gemini-flash-lite-latest';
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Tenta o modelo principal (2 vezes) e depois o reserva, enquanto o erro for de sobrecarga
+// Jeitos de deixar o "pensamento" do modelo no minimo (resposta mais rapida).
+// Cada geracao de modelo aceita um formato diferente; o ultimo (null) e sem a opcao.
+const OPCOES_PENSAMENTO = [{ thinkingLevel: 'minimal' }, { thinkingBudget: 0 }, null];
+
+// Lembra qual opcao funcionou em cada modelo (vale enquanto o servidor estiver "acordado")
+const opcaoQueFunciona = new Map();
+
+// Uma chamada a um modelo, descobrindo (e memorizando) a opcao de pensamento aceita
+async function chamarModelo(env, modelo, conteudos) {
+  const inicio = opcaoQueFunciona.has(modelo) ? opcaoQueFunciona.get(modelo) : 0;
+  let resp;
+  for (let i = inicio; i < OPCOES_PENSAMENTO.length; i++) {
+    resp = await chamarGemini(env, modelo, conteudos, OPCOES_PENSAMENTO[i]);
+    if (resp.status !== 400) {
+      opcaoQueFunciona.set(modelo, i);
+      return resp;
+    }
+    console.log('Gemini 400', modelo, JSON.stringify(OPCOES_PENSAMENTO[i]), await resp.text());
+  }
+  return resp;
+}
+
+// Principal uma vez -> reserva -> principal de novo apos 1 s, enquanto o erro for sobrecarga
 async function chamarComInsistencia(env, conteudos) {
+  const principal = env.MODELO || 'gemini-flash-latest';
   const tentativas = [
-    { modelo: env.MODELO || 'gemini-flash-latest', esperaAntes: 0 },
-    { modelo: env.MODELO || 'gemini-flash-latest', esperaAntes: 1000 },
+    { modelo: principal, esperaAntes: 0 },
     { modelo: MODELO_RESERVA, esperaAntes: 0 },
+    { modelo: principal, esperaAntes: 1000 },
   ];
   let resp;
   for (const t of tentativas) {
     if (t.esperaAntes) await espera(t.esperaAntes);
-    resp = await chamarGemini(env, t.modelo, conteudos, true);
-    if (resp.status === 400) {
-      // Alguns modelos nao aceitam desligar o pensamento: tenta de novo sem essa opcao
-      console.log('Gemini 400 com thinkingBudget, tentando sem', t.modelo, await resp.text());
-      resp = await chamarGemini(env, t.modelo, conteudos, false);
+    resp = await chamarModelo(env, t.modelo, conteudos);
+    if (resp.status !== 500 && resp.status !== 503) {
+      console.log('Gemini respondeu', t.modelo, resp.status);
+      return resp;
     }
-    if (resp.status !== 500 && resp.status !== 503) return resp;
     console.log('Gemini sobrecarregado', t.modelo, resp.status, await resp.text());
   }
   return resp;
 }
 
-async function chamarGemini(env, modelo, conteudos, semThinking) {
+async function chamarGemini(env, modelo, conteudos, opcaoPensamento) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`;
   const config = {
     responseMimeType: 'application/json',
@@ -84,9 +105,9 @@ async function chamarGemini(env, modelo, conteudos, semThinking) {
     },
     maxOutputTokens: 1024,
   };
-  // Pensamento desligado = resposta mais rapida (importa num assistente de voz)
-  if (semThinking) {
-    config.thinkingConfig = { thinkingBudget: 0 };
+  // Pensamento no minimo = resposta mais rapida (importa num assistente de voz)
+  if (opcaoPensamento) {
+    config.thinkingConfig = opcaoPensamento;
   }
   return fetch(url, {
     method: 'POST',
