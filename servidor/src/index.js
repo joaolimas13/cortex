@@ -43,8 +43,34 @@ function instrucoes() {
   ].join('\n');
 }
 
-async function chamarGemini(env, conteudos, semThinking) {
-  const modelo = env.MODELO || 'gemini-flash-latest';
+// Modelo reserva: se o principal estiver sobrecarregado (erro 503), tenta o Flash-Lite
+const MODELO_RESERVA = 'gemini-flash-lite-latest';
+
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Tenta o modelo principal (2 vezes) e depois o reserva, enquanto o erro for de sobrecarga
+async function chamarComInsistencia(env, conteudos) {
+  const tentativas = [
+    { modelo: env.MODELO || 'gemini-flash-latest', esperaAntes: 0 },
+    { modelo: env.MODELO || 'gemini-flash-latest', esperaAntes: 1000 },
+    { modelo: MODELO_RESERVA, esperaAntes: 0 },
+  ];
+  let resp;
+  for (const t of tentativas) {
+    if (t.esperaAntes) await espera(t.esperaAntes);
+    resp = await chamarGemini(env, t.modelo, conteudos, true);
+    if (resp.status === 400) {
+      // Alguns modelos nao aceitam desligar o pensamento: tenta de novo sem essa opcao
+      console.log('Gemini 400 com thinkingBudget, tentando sem', t.modelo, await resp.text());
+      resp = await chamarGemini(env, t.modelo, conteudos, false);
+    }
+    if (resp.status !== 500 && resp.status !== 503) return resp;
+    console.log('Gemini sobrecarregado', t.modelo, resp.status, await resp.text());
+  }
+  return resp;
+}
+
+async function chamarGemini(env, modelo, conteudos, semThinking) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`;
   const config = {
     responseMimeType: 'application/json',
@@ -104,18 +130,18 @@ async function perguntar(request, env) {
     parts: [{ inline_data: { mime_type: 'audio/wav', data: corpo.audio } }],
   });
 
-  let resp = await chamarGemini(env, conteudos, true);
-  if (resp.status === 400) {
-    // Alguns modelos nao aceitam desligar o pensamento: tenta de novo sem essa opcao
-    resp = await chamarGemini(env, conteudos, false);
-  }
+  const resp = await chamarComInsistencia(env, conteudos);
+  // Mensagens de erro em frases faceis de ouvir (sao faladas pela voz do tablet)
   if (resp.status === 429) {
-    return json({ erro: 'limite grátis do Gemini atingido, tente mais tarde' }, 429);
+    return json({ erro: 'Atingi o limite grátis do Gemini. Tente de novo daqui a pouco.' }, 429);
+  }
+  if (resp.status === 500 || resp.status === 503) {
+    return json({ erro: 'O Gemini está sobrecarregado agora. Tente de novo em alguns segundos.' }, 503);
   }
   if (!resp.ok) {
     const detalhe = await resp.text();
     console.log('Gemini erro', resp.status, detalhe);
-    return json({ erro: `Gemini respondeu erro ${resp.status}` }, 502);
+    return json({ erro: 'O Gemini recusou o pedido, código ' + resp.status + '.' }, 502);
   }
 
   const dados = await resp.json();
