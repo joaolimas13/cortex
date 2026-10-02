@@ -1,6 +1,6 @@
 // Microfone do Cortex.
-// O Chrome 34 do tablet nao tem MediaRecorder, entao capturamos o som cru
-// com o AudioContext e montamos um arquivo WAV na mao (testado no teste.html).
+// Captura o som cru com o AudioContext e monta um arquivo WAV na mao.
+// Funciona no iPad (Safari) e tambem no Chrome 34 do tablet antigo, que nao tem MediaRecorder.
 // Tambem detecta quando voce parou de falar, para encerrar sozinho.
 var Cortex = window.Cortex || {};
 window.Cortex = Cortex;
@@ -26,6 +26,7 @@ Cortex.Microfone = (function () {
   var ultimaFala = 0;
   var falou = false;
   var ouvintes = null;
+  var limiteSemFala = SEM_FALA_MS;
 
   function pedirPermissao(sucesso, erro) {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -40,7 +41,24 @@ Cortex.Microfone = (function () {
     antigo.call(navigator, { audio: true }, sucesso, erro);
   }
 
-  // Abre o microfone uma vez e deixa ligado: assim as proximas perguntas comecam na hora
+  // Navegador moderno (iPad): desliga o microfone depois de cada pergunta. Com o microfone
+  // aberto o iOS entra em "modo chamada" e a voz do Cortex sai mais baixa e abafada.
+  // No tablet antigo (Chrome 34, HTTP) cada abertura pediria permissao de novo, entao la fica ligado.
+  var LIBERAR_APOS_GRAVAR = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  function liberar() {
+    if (fonte) { fonte.disconnect(); }
+    if (processador) { processador.disconnect(); processador.onaudioprocess = null; }
+    if (stream) {
+      var faixas = stream.getTracks ? stream.getTracks() : [];
+      for (var i = 0; i < faixas.length; i++) { faixas[i].stop(); }
+    }
+    fonte = null;
+    processador = null;
+    stream = null;
+  }
+
+  // Abre o microfone (ou reaproveita, se ja estiver aberto)
   function preparar(pronto, erro) {
     if (processador) {
       pronto();
@@ -90,7 +108,7 @@ Cortex.Microfone = (function () {
 
     if (falou && agora - ultimaFala > SILENCIO_MS) {
       terminar(false);
-    } else if (!falou && agora - inicio > SEM_FALA_MS) {
+    } else if (!falou && agora - inicio > limiteSemFala) {
       terminar(false);
     } else if (agora - inicio > MAX_MS) {
       terminar(false);
@@ -109,6 +127,7 @@ Cortex.Microfone = (function () {
     }
     blocos = [];
     ouvintes = null;
+    if (LIBERAR_APOS_GRAVAR) { liberar(); }
     // Sai da funcao de audio antes de avisar o app
     setTimeout(function () {
       if (fim) { fim(wav, segundos); }
@@ -160,7 +179,7 @@ Cortex.Microfone = (function () {
     return new Blob([buffer], { type: 'audio/wav' });
   }
 
-  // ouv = { nivel: function (0..1), fim: function (wavOuNull, segundos) }
+  // ouv = { nivel: function (0..1), fim: function (wavOuNull, segundos), semFalaMs: opcional }
   function iniciar(ouv, erro) {
     if (!AudioCtx) {
       erro({ name: 'SemAudioContext', message: 'navegador sem AudioContext' });
@@ -174,6 +193,7 @@ Cortex.Microfone = (function () {
       inicio = Date.now();
       ultimaFala = inicio;
       ouvintes = ouv;
+      limiteSemFala = ouv.semFalaMs || SEM_FALA_MS;
       gravando = true;
     }, erro);
   }

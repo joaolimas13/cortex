@@ -12,9 +12,12 @@ html, body {
 }
 
 body {
-  font-family: sans-serif;
+  font-family: -apple-system, sans-serif;
   -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;      /* iPad: sem menu ao segurar o dedo */
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  touch-action: manipulation;       /* sem zoom com toque duplo */
   cursor: pointer;
 }
 
@@ -64,8 +67,10 @@ body {
   overflow: hidden;
   border-radius: 7vmin;
   background: #35e0ff;
-  -webkit-transition: top 0.25s, bottom 0.25s, background-color 0.3s;
-  transition: top 0.25s, bottom 0.25s, background-color 0.3s;
+  /* Brilho em volta do olho (o iPad aguenta; no tablet antigo so fica sem) */
+  box-shadow: 0 0 6vmin rgba(53, 224, 255, 0.45);
+  -webkit-transition: top 0.25s, bottom 0.25s, background-color 0.3s, box-shadow 0.3s;
+  transition: top 0.25s, bottom 0.25s, background-color 0.3s, box-shadow 0.3s;
 }
 
 /* Elipse preta que sobe por baixo: deixa o olho em formato de "sorriso" ^ ^ */
@@ -87,6 +92,7 @@ body {
 
 .estado-ouvindo .brilho {
   background: #5dffa8;
+  box-shadow: 0 0 7vmin rgba(93, 255, 168, 0.5);
 }
 
 .estado-pensando .brilho {
@@ -110,6 +116,7 @@ body {
   top: 47%;
   bottom: 47%;
   background: #1b6f80;
+  box-shadow: none;
 }
 
 /* ---------- Texto de ajuda embaixo ---------- */
@@ -119,7 +126,8 @@ body {
   right: 0;
   bottom: 5vmin;
   left: 0;
+  padding: 0 6vmin;
   text-align: center;
-  font-size: 4vmin;
-  color: #2a6b78;
+  font-size: 3.6vmin;
+  color: #3b8796;
 }

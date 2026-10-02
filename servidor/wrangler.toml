@@ -1,6 +1,6 @@
 # Cortex na Cloudflare Workers (plano gratis): pagina do rosto + servidor no mesmo endereco.
-# O tablet (Android 4.2) nao confia em nenhum certificado moderno, entao ele usa
-# HTTP sem criptografia: http://cortex.jp-cortex.workers.dev
+# Usado no iPad: https://cortex.jp-cortex.workers.dev
+# (o tablet antigo, Android 4.2, nao confia no certificado e usa http://)
 #
 # Segredos (NUNCA escreva aqui, este arquivo e publico no GitHub):
 #   GEMINI_API_KEY  -> chave do Google AI Studio

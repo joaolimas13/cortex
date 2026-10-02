@@ -1,5 +1,5 @@
-// Voz do Cortex: usa a voz em portugues que ja vem no Android.
-// O Chrome antigo corta falas longas, entao a resposta e dividida em frases curtas.
+// Voz do Cortex: usa a melhor voz em portugues instalada no aparelho (iPad: Luciana).
+// Navegadores cortam falas longas, entao a resposta e dividida em frases curtas.
 var Cortex = window.Cortex || {};
 window.Cortex = Cortex;
 
@@ -12,14 +12,33 @@ Cortex.Voz = (function () {
   var emUso = [];        // referencias guardadas: sem isso o Chrome as vezes "perde" o onend
   var timerSeguranca = null;
 
+  // Nota de cada voz: portugues do Brasil primeiro, e entre elas as versoes
+  // "Aprimorada"/"Premium" do iPad, que soam bem mais naturais que a padrao.
+  function nota(v) {
+    var lang = (v.lang || '').replace('_', '-').toLowerCase();
+    if (lang.indexOf('pt') !== 0) { return -1; }
+    var nome = (v.name || '').toLowerCase();
+    var pontos = lang === 'pt-br' ? 10 : 0;
+    if (/premium/.test(nome)) { pontos += 5; }
+    else if (/aprimorad|enhanced|melhorad/.test(nome)) { pontos += 4; }
+    if (/luciana|felipe|google/.test(nome)) { pontos += 1; }
+    // Vozes "engracadas" do iOS (Eddy, Grandma, Rocko...) ficam por ultimo
+    if (/eddy|flo|grand|reed|rocko|sandy|shelley/.test(nome)) { pontos -= 8; }
+    return pontos;
+  }
+
   function escolherVoz() {
     if (!sintese) { return; }
     var vozes = sintese.getVoices();
+    var melhor = -1;
     for (var i = 0; i < vozes.length; i++) {
-      var lang = (vozes[i].lang || '').replace('_', '-').toLowerCase();
-      if (lang === 'pt-br') { voz = vozes[i]; return; }
-      if (!voz && lang.indexOf('pt') === 0) { voz = vozes[i]; }
+      var n = nota(vozes[i]);
+      if (n > melhor) { melhor = n; voz = vozes[i]; }
     }
+  }
+
+  function nomeDaVoz() {
+    return voz ? voz.name + ' (' + voz.lang + ')' : 'padrão do sistema';
   }
 
   function dividir(texto) {
@@ -105,6 +124,7 @@ Cortex.Voz = (function () {
   return {
     falar: falar,
     parar: parar,
-    destravar: destravar
+    destravar: destravar,
+    nomeDaVoz: nomeDaVoz
   };
 })();

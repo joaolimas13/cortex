@@ -2,12 +2,19 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<!-- Permite "Adicionar a tela inicial" abrir sem a barra do Chrome (Chrome antigo nao le manifest) -->
+<!-- viewport-fit=cover: usa a tela inteira do iPad, inclusive perto das bordas arredondadas -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- "Adicionar a Tela de Inicio" no iPad abre como app, sem a barra do Safari -->
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cortex">
 <meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="icon" href="icones/icone-192.png">
+<link rel="manifest" href="manifest.json">
 <title>Cortex</title>
-<link rel="stylesheet" href="css/rosto.css?v=1">
+<link rel="stylesheet" href="css/rosto.css?v=10">
 </head>
 <body>
   <div id="rosto" class="estado-ocioso">
@@ -18,12 +25,12 @@
     <div id="status">toque para falar</div>
   </div>
 
-  <!-- Scripts comuns (sem modules) e em ES5 para rodar no Chrome 34 do tablet -->
-  <script src="js/config.js?v=9"></script>
-  <script src="js/olhos.js?v=9"></script>
-  <script src="js/microfone.js?v=9"></script>
-  <script src="js/voz.js?v=9"></script>
-  <script src="js/cerebro.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <!-- Scripts comuns (sem modules), em ES5: rodam no iPad e tambem no tablet antigo -->
+  <script src="js/config.js?v=10"></script>
+  <script src="js/olhos.js?v=10"></script>
+  <script src="js/microfone.js?v=10"></script>
+  <script src="js/voz.js?v=10"></script>
+  <script src="js/cerebro.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>
